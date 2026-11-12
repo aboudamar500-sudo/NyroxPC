@@ -1,0 +1,64 @@
+name: NyroxPC Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld llvm
+
+      - name: Compile UEFI bootloader
+        run: |
+          mkdir -p build
+          for src in bootloader/src/*.c; do
+            obj="build/$(basename "${src%.c}").obj"
+            clang --target=x86_64-pc-win32-coff \
+              -std=c11 -O2 -ffreestanding -fshort-wchar \
+              -mno-red-zone -fno-stack-protector -fno-builtin \
+              -Iinclude -c "$src" -o "$obj"
+          done
+
+      - name: Compile kernel
+        run: |
+          clang --target=x86_64-unknown-none-elf \
+            -std=c11 -O2 -ffreestanding -fno-stack-protector \
+            -fno-pic -mno-red-zone -Iinclude \
+            -c kernel/src/main.c -o build/kernel.o
+
+      - name: Link kernel ELF
+        run: |
+          ld.lld -T kernel/linker.ld -nostdlib \
+            -o build/KERNEL.ELF build/kernel.o
+
+      - name: Link UEFI application
+        run: |
+          lld-link /subsystem:efi_application /entry:efi_main \
+            /nodefaultlib /machine:x64 \
+            /out:build/BOOTX64.EFI build/*.obj
+
+      - name: Verify outputs
+        run: |
+          file build/BOOTX64.EFI build/KERNEL.ELF
+          llvm-readelf -h build/KERNEL.ELF
+          llvm-readelf -lW build/KERNEL.ELF
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: NyroxPC-x86_64
+          path: |
+            build/BOOTX64.EFI
+            build/KERNEL.ELF
