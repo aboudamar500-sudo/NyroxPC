@@ -1,0 +1,6 @@
+Nyrox PC Live
+Version: 0.1.0
+Architecture: x86_64
+Boot: UEFI
+Stage: Initial EFI Bootloader
+Status: Built - Not Yet Boot Tested

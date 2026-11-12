@@ -1,0 +1,20 @@
+#ifndef NYROX_UEFI_SIMPLE_FS_H
+#define NYROX_UEFI_SIMPLE_FS_H
+
+#include "types.h"
+#include "file.h"
+
+typedef struct EFI_SIMPLE_FILE_SYSTEM_PROTOCOL
+    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL;
+
+typedef EFI_STATUS (EFIAPI *EFI_SIMPLE_FS_OPEN_VOLUME)(
+    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *This,
+    EFI_FILE_PROTOCOL **Root
+);
+
+struct EFI_SIMPLE_FILE_SYSTEM_PROTOCOL {
+    UINT64 Revision;
+    EFI_SIMPLE_FS_OPEN_VOLUME OpenVolume;
+};
+
+#endif

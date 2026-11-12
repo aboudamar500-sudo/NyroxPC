@@ -1,0 +1,9 @@
+build/
+image/
+boot.bin
+*.o
+*.obj
+*.elf
+*.EFI
+*.iso
+*.img
