@@ -8,7 +8,7 @@ EFI_STATUS open_root_volume(
     if (FileSystem == 0 ||
         FileSystem->OpenVolume == 0 ||
         Root == 0) {
-        return (EFI_STATUS)2;
+        return EFI_INVALID_PARAMETER;
     }
 
     *Root = 0;
@@ -22,7 +22,7 @@ EFI_STATUS open_root_volume(
         return status;
 
     if (*Root == 0)
-        return (EFI_STATUS)2;
+        return EFI_INVALID_PARAMETER;
 
     return EFI_SUCCESS;
 }

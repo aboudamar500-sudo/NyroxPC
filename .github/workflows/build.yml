@@ -10,10 +10,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install toolchain
         run: |
@@ -22,9 +20,10 @@ jobs:
 
       - name: Compile UEFI bootloader
         run: |
-          mkdir -p build
+          set -e
+          mkdir -p build/bootloader
           for src in bootloader/src/*.c; do
-            obj="build/$(basename "${src%.c}").obj"
+            obj="build/bootloader/$(basename "${src%.c}").obj"
             clang --target=x86_64-pc-win32-coff \
               -std=c11 -O2 -ffreestanding -fshort-wchar \
               -mno-red-zone -fno-stack-protector -fno-builtin \
@@ -33,21 +32,31 @@ jobs:
 
       - name: Compile kernel
         run: |
+          set -e
+          mkdir -p build/kernel
+          for src in kernel/src/*.c kernel/arch/x86_64/*.c; do
+            obj="build/kernel/$(basename "${src%.c}").obj"
+            clang --target=x86_64-unknown-none-elf \
+              -std=c11 -O2 -ffreestanding -fno-stack-protector \
+              -fno-pic -mno-red-zone -Wall -Wextra -Werror \
+              -Iinclude -Ikernel/src -Ikernel/arch/x86_64 \
+              -c "$src" -o "$obj"
+          done
           clang --target=x86_64-unknown-none-elf \
-            -std=c11 -O2 -ffreestanding -fno-stack-protector \
-            -fno-pic -mno-red-zone -Iinclude \
-            -c kernel/src/main.c -o build/kernel.o
+            -c kernel/arch/x86_64/gdt.S -o build/kernel/gdt-asm.obj
+          clang --target=x86_64-unknown-none-elf \
+            -c kernel/arch/x86_64/interrupts.S -o build/kernel/interrupts-asm.obj
 
       - name: Link kernel ELF
         run: |
-          ld.lld -T kernel/linker.ld -nostdlib \
-            -o build/KERNEL.ELF build/kernel.o
+          ld.lld -T kernel/linker.ld -nostdlib -static \
+            -o build/KERNEL.ELF build/kernel/*.obj
 
       - name: Link UEFI application
         run: |
           lld-link /subsystem:efi_application /entry:efi_main \
             /nodefaultlib /machine:x64 \
-            /out:build/BOOTX64.EFI build/*.obj
+            /out:build/BOOTX64.EFI build/bootloader/*.obj
 
       - name: Verify outputs
         run: |
@@ -55,8 +64,7 @@ jobs:
           llvm-readelf -h build/KERNEL.ELF
           llvm-readelf -lW build/KERNEL.ELF
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: NyroxPC-x86_64
           path: |

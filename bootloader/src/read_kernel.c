@@ -14,13 +14,13 @@ EFI_STATUS read_kernel_file(
         KernelBuffer == 0 ||
         FileSize == 0 ||
         FileSize > NYROX_MAX_KERNEL_SIZE) {
-        return (EFI_STATUS)2;
+        return EFI_INVALID_PARAMETER;
     }
 
     EFI_BOOT_SERVICES *bs = SystemTable->BootServices;
 
     if (bs->AllocatePool == 0 || bs->FreePool == 0)
-        return (EFI_STATUS)2;
+        return EFI_INVALID_PARAMETER;
 
     *KernelBuffer = 0;
 
@@ -36,7 +36,7 @@ EFI_STATUS read_kernel_file(
         return status;
 
     if (buffer == 0)
-        return (EFI_STATUS)2;
+        return EFI_INVALID_PARAMETER;
 
     UINTN total_read = 0;
 
@@ -51,12 +51,12 @@ EFI_STATUS read_kernel_file(
 
         if (status != EFI_SUCCESS || remaining == 0) {
             bs->FreePool(buffer);
-            return status != EFI_SUCCESS ? status : (EFI_STATUS)2;
+            return status != EFI_SUCCESS ? status : EFI_INVALID_PARAMETER;
         }
 
         if (remaining > (UINTN)FileSize - total_read) {
             bs->FreePool(buffer);
-            return (EFI_STATUS)2;
+            return EFI_INVALID_PARAMETER;
         }
 
         total_read += remaining;

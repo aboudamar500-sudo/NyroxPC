@@ -21,18 +21,18 @@ EFI_STATUS load_elf64(
 ) {
     if (!SystemTable || !SystemTable->BootServices ||
         !FileBuffer || !EntryPoint || !Loaded || !LoadedCount)
-        return (EFI_STATUS)2;
+        return EFI_INVALID_PARAMETER;
 
     EFI_BOOT_SERVICES *bs = SystemTable->BootServices;
 
     if (!bs->AllocatePages || !bs->FreePages)
-        return (EFI_STATUS)2;
+        return EFI_INVALID_PARAMETER;
 
     *EntryPoint = 0;
     *LoadedCount = 0;
 
     if (!validate_elf64(FileBuffer, FileSize))
-        return (EFI_STATUS)2;
+        return EFI_INVALID_PARAMETER;
 
     const Elf64_Ehdr *eh = (const Elf64_Ehdr *)FileBuffer;
     const Elf64_Phdr *phdrs =
@@ -140,7 +140,7 @@ invalid:
             Loaded[*LoadedCount].pages
         );
     }
-    return (EFI_STATUS)2;
+    return EFI_INVALID_PARAMETER;
 
 allocation_failed:
     while (*LoadedCount > 0) {
@@ -150,5 +150,5 @@ allocation_failed:
             Loaded[*LoadedCount].pages
         );
     }
-    return (EFI_STATUS)2;
+    return EFI_INVALID_PARAMETER;
 }

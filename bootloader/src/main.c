@@ -1,4 +1,5 @@
 #include "uefi/uefi.h"
+#include "uefi/loaded_image.h"
 #include "uefi/graphics_output.h"
 #include "uefi/simple_fs.h"
 #include "uefi/file_info.h"
@@ -6,10 +7,6 @@
 #include "boot_info.h"
 #include "elf64.h"
 
-EFI_STATUS locate_filesystem(
-    EFI_SYSTEM_TABLE *,
-    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL **
-);
 EFI_STATUS open_root_volume(
     EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *,
     EFI_FILE_PROTOCOL **
@@ -132,6 +129,12 @@ static void cleanup(
         bs->FreePages(Loaded[i].base, Loaded[i].pages);
 }
 
+
+static void uefi_print(EFI_SYSTEM_TABLE *st, CHAR16 *message) {
+    if (st && st->ConOut && st->ConOut->OutputString)
+        st->ConOut->OutputString(st->ConOut, message);
+}
+
 EFI_STATUS EFIAPI efi_main(
     EFI_HANDLE ImageHandle,
     EFI_SYSTEM_TABLE *SystemTable
@@ -173,29 +176,58 @@ EFI_STATUS EFIAPI efi_main(
     boot_info.memory_map_descriptor_version = 0;
 
     EFI_STATUS status;
+    CHAR16 *failed_stage = L"START\r\n";
 
-    status = locate_filesystem(SystemTable, &fs);
+    EFI_LOADED_IMAGE_PROTOCOL *loaded_image = 0;
+    EFI_GUID loaded_image_guid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
+    EFI_GUID fs_guid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
+
+    failed_stage = L"LOADED_IMAGE\r\n";
+    status = bs->HandleProtocol(
+        ImageHandle,
+        &loaded_image_guid,
+        (void **)&loaded_image
+    );
     if (status != EFI_SUCCESS)
         goto fail;
 
+    if (!loaded_image || !loaded_image->DeviceHandle) {
+        status = EFI_INVALID_PARAMETER;
+        goto fail;
+    }
+
+    failed_stage = L"DEVICE_FILESYSTEM\r\n";
+    status = bs->HandleProtocol(
+        loaded_image->DeviceHandle,
+        &fs_guid,
+        (void **)&fs
+    );
+    if (status != EFI_SUCCESS)
+        goto fail;
+
+    failed_stage = L"OPEN_ROOT\r\n";
     status = open_root_volume(fs, &root);
     if (status != EFI_SUCCESS)
         goto fail;
 
+    failed_stage = L"OPEN_KERNEL\r\n";
     status = open_kernel_file(root, &kernel);
     if (status != EFI_SUCCESS)
         goto fail;
 
+    failed_stage = L"FILE_INFO\r\n";
     status = get_file_info(SystemTable, kernel, &info);
     if (status != EFI_SUCCESS)
         goto fail;
 
+    failed_stage = L"READ_KERNEL\r\n";
     status = read_kernel_file(
         SystemTable, kernel, info->FileSize, &kernel_buffer
     );
     if (status != EFI_SUCCESS)
         goto fail;
 
+    failed_stage = L"LOAD_ELF\r\n";
     status = load_elf64(
         SystemTable,
         kernel_buffer,
@@ -223,6 +255,7 @@ EFI_STATUS EFIAPI efi_main(
     boot_info.structure_version = NYROX_BOOT_INFO_VERSION;
     initialize_framebuffer(bs, &boot_info);
 
+    failed_stage = L"GET_MEMORY_MAP\r\n";
     status = get_memory_map(SystemTable, &map);
     if (status != EFI_SUCCESS)
         goto fail;
@@ -232,6 +265,7 @@ EFI_STATUS EFIAPI efi_main(
     boot_info.memory_map_descriptor_size = map.DescriptorSize;
     boot_info.memory_map_descriptor_version = map.DescriptorVersion;
 
+    failed_stage = L"EXIT_BOOT_SERVICES\r\n";
     status = bs->ExitBootServices(ImageHandle, map.MapKey);
 
     if (status == EFI_INVALID_PARAMETER) {
@@ -257,6 +291,8 @@ EFI_STATUS EFIAPI efi_main(
         __asm__ volatile ("cli; hlt");
 
 fail:
+    uefi_print(SystemTable, L"NYROX BOOT ERROR: ");
+    uefi_print(SystemTable, failed_stage);
     cleanup(
         SystemTable,
         kernel,

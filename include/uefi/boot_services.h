@@ -53,6 +53,12 @@ typedef EFI_STATUS (EFIAPI *EFI_LOCATE_PROTOCOL)(
     void **Interface
 );
 
+typedef EFI_STATUS (EFIAPI *EFI_HANDLE_PROTOCOL)(
+    EFI_HANDLE Handle,
+    EFI_GUID *Protocol,
+    void **Interface
+);
+
 typedef struct EFI_BOOT_SERVICES EFI_BOOT_SERVICES;
 
 struct EFI_BOOT_SERVICES {
@@ -73,7 +79,7 @@ struct EFI_BOOT_SERVICES {
     void *InstallProtocolInterface;
     void *ReinstallProtocolInterface;
     void *UninstallProtocolInterface;
-    void *HandleProtocol;
+    EFI_HANDLE_PROTOCOL HandleProtocol;
     void *Reserved;
     void *RegisterProtocolNotify;
     void *LocateHandle;

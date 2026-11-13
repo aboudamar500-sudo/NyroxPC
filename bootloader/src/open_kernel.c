@@ -11,7 +11,7 @@ EFI_STATUS open_kernel_file(
     EFI_FILE_PROTOCOL **Kernel
 ) {
     if (Root == 0 || Root->Open == 0 || Kernel == 0)
-        return (EFI_STATUS)2;
+        return EFI_INVALID_PARAMETER;
 
     *Kernel = 0;
 
@@ -27,7 +27,7 @@ EFI_STATUS open_kernel_file(
         return status;
 
     if (*Kernel == 0)
-        return (EFI_STATUS)2;
+        return EFI_INVALID_PARAMETER;
 
     return EFI_SUCCESS;
 }

@@ -21,8 +21,10 @@ typedef struct {
 
 #define EFIAPI __attribute__((ms_abi))
 #define EFI_SUCCESS 0
-#define EFI_INVALID_PARAMETER 2
-#define EFI_BUFFER_TOO_SMALL 5
+#define EFI_ERROR_BIT (1ULL << 63)
+#define EFIERR(code) (EFI_ERROR_BIT | (UINT64)(code))
+#define EFI_INVALID_PARAMETER EFIERR(2)
+#define EFI_BUFFER_TOO_SMALL EFIERR(5)
 #define EFI_MEMORY_DESCRIPTOR_VERSION 1
 
 #endif

@@ -10,13 +10,13 @@ EFI_STATUS get_file_info(
     if (SystemTable == 0 ||
         SystemTable->BootServices == 0 ||
         File == 0 || File->GetInfo == 0 || Info == 0) {
-        return (EFI_STATUS)2;
+        return EFI_INVALID_PARAMETER;
     }
 
     EFI_BOOT_SERVICES *bs = SystemTable->BootServices;
 
     if (bs->AllocatePool == 0 || bs->FreePool == 0)
-        return (EFI_STATUS)2;
+        return EFI_INVALID_PARAMETER;
 
     EFI_GUID guid = EFI_FILE_INFO_ID;
     UINTN size = 0;
@@ -31,7 +31,7 @@ EFI_STATUS get_file_info(
     }
 
     if (size > 4096)
-        return (EFI_STATUS)2;
+        return EFI_INVALID_PARAMETER;
 
     UINTN allocated_size = size;
     EFI_FILE_INFO *info = 0;
@@ -60,7 +60,7 @@ EFI_STATUS get_file_info(
         info->FileSize == 0 ||
         info->FileSize > NYROX_MAX_KERNEL_SIZE) {
         bs->FreePool(info);
-        return (EFI_STATUS)2;
+        return EFI_INVALID_PARAMETER;
     }
 
     *Info = info;
